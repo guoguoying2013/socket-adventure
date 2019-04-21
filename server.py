@@ -60,7 +60,7 @@ class Server(object):
             socket.AF_INET,
             socket.SOCK_STREAM,
             socket.IPPROTO_TCP)
-
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         address = ('127.0.0.1', self.port)
         self.socket.bind(address)
         self.socket.listen(1)
@@ -78,10 +78,12 @@ class Server(object):
         :param room_number: int
         :return: str
         """
-
-        # TODO: YOUR CODE HERE
-
-        pass
+        return [
+            "You are in the room with white wallpaper.",
+            "You are in the room with green wallpaper.",
+            "You are in the room with brown wallpaper.",
+            "You are in the room with mauve wallpaper.",
+        ][room_number]
 
     def greet(self):
         """
@@ -107,10 +109,12 @@ class Server(object):
          
         :return: None 
         """
-
-        # TODO: YOUR CODE HERE
-
-        pass
+        received = b""
+        while b'\n' not in received:
+            received += self.client_connection.recv(16)
+        #decode, and strip of the new line character
+        self.input_buffer = received.decode().strip()
+        return None
 
     def move(self, argument):
         """
@@ -132,10 +136,22 @@ class Server(object):
         :param argument: str
         :return: None
         """
+        if self.room == 0 and argument == "north":
+            self.room = 3
+        if self.room == 0 and argument == "west":
+            self.room = 1
+        if self.room == 0 and argument == "east":
+            self.room = 2
+        if self.room == 1 and argument == "east":
+            self.room  = 0
+        if self.room == 2 and argument == "west":
+            self.room = 0
+        if self.room == 3 and argument == "south":
+            self.room = 0
 
-        # TODO: YOUR CODE HERE
+        self.output_buffer = self.room_description(self.room)
 
-        pass
+        return None
 
     def say(self, argument):
         """
@@ -150,10 +166,8 @@ class Server(object):
         :param argument: str
         :return: None
         """
-
-        # TODO: YOUR CODE HERE
-
-        pass
+        self.output_buffer = 'You say "{}"'.format(argument)
+        return None
 
     def quit(self, argument):
         """
@@ -166,10 +180,12 @@ class Server(object):
         :param argument: str
         :return: None
         """
+        #why quit accepts one argument? present the same interface as all of the other methods
+        self.done = True
+        self.output_buffer = "Goodbye!"
+        return None
 
-        # TODO: YOUR CODE HERE
 
-        pass
 
     def route(self):
         """
@@ -182,10 +198,15 @@ class Server(object):
         
         :return: None
         """
+        received = self.input_buffer.split(" ")
+        command = received.pop(0)
+        arguments = " ".join(received)
+        {
+            'quit':self.quit,
+            'move':self.move,
+            'say':self.say,
+        }[command](arguments)
 
-        # TODO: YOUR CODE HERE
-
-        pass
 
     def push_output(self):
         """
@@ -196,10 +217,10 @@ class Server(object):
         
         :return: None 
         """
+        self.output_buffer = b"OK!"+self.output_buffer.encode()+b"\n"
+        self.client_connection.sendall(self.output_buffer)
 
-        # TODO: YOUR CODE HERE
-
-        pass
+        return None
 
     def serve(self):
         self.connect()
